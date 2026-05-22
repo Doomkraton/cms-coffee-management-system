@@ -14,6 +14,8 @@ import type {
   UserUpdate,
   OwnPasswordChange,
   AdminPasswordChange,
+  InstanceSettings,
+  InstanceSettingsUpdate,
 } from "./types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -134,6 +136,15 @@ export const brewsApi = {
     client.patch<BrewLog>(`/api/brews/${id}`, data).then((r) => r.data),
   delete: (id: number) => client.delete(`/api/brews/${id}`),
   stats: () => client.get<BrewStats>("/api/brews/stats").then((r) => r.data),
+};
+
+// ─────────────────────────────── Instance Settings ───────────────────────────
+
+export const instanceSettingsApi = {
+  get: () =>
+    client.get<InstanceSettings>("/api/instance-settings/").then((r) => r.data),
+  update: (data: InstanceSettingsUpdate) =>
+    client.patch<InstanceSettings>("/api/instance-settings/", data).then((r) => r.data),
 };
 
 // Helper: extract error message from Axios error

@@ -318,3 +318,17 @@ class BrewLogOut(BaseModel):
 class InstanceStatus(BaseModel):
     has_users: bool
     registration_open: bool
+
+
+# ─────────────────────────────── Instance Settings ───────────────────────────
+
+class InstanceSettingsOut(BaseModel):
+    show_costs: bool
+    currency: str
+
+    model_config = {"from_attributes": True}
+
+
+class InstanceSettingsUpdate(BaseModel):
+    show_costs: Optional[bool] = None
+    currency: Optional[str] = None

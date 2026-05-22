@@ -179,4 +179,19 @@ export interface BrewStats {
   total_coffee_grams: number;
   top_bean: string | null;
   top_method: string | null;
+  total_spent: number | null;
+  avg_cost_per_brew: number | null;
+  costed_brews: number;
+}
+
+// ─────────────────────────── Instance Settings ───────────────────────────────
+
+export interface InstanceSettings {
+  show_costs: boolean;
+  currency: string;
+}
+
+export interface InstanceSettingsUpdate {
+  show_costs?: boolean;
+  currency?: string;
 }

@@ -127,3 +127,12 @@ class InviteCode(Base):
 
     creator = relationship("User", foreign_keys=[created_by], back_populates="invite_codes_created")
     used_by_user = relationship("User", foreign_keys=[used_by], back_populates="invite_codes_used")
+
+
+class InstanceSettings(Base):
+    """Single-row table holding household-wide preferences."""
+    __tablename__ = "instance_settings"
+
+    id = Column(Integer, primary_key=True, default=1)
+    show_costs = Column(Boolean, default=True, nullable=False)
+    currency = Column(String(3), default="USD", nullable=False)

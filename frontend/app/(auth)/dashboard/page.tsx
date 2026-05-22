@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { brewsApi, beansApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
+import { useSettingsStore } from "@/lib/settingsStore";
+import { formatCost } from "@/lib/currencies";
 import type { BrewStats, BrewLog, Bean } from "@/lib/types";
 import StarRating from "@/components/StarRating";
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const { showCosts, currency } = useSettingsStore();
   const [stats, setStats] = useState<BrewStats | null>(null);
   const [recentBrews, setRecentBrews] = useState<BrewLog[]>([]);
   const [beans, setBeans] = useState<Bean[]>([]);
@@ -53,7 +56,14 @@ export default function DashboardPage() {
           label="Coffee Used"
           value={stats?.total_coffee_grams ? `${stats.total_coffee_grams}g` : "—"}
         />
-        <StatCard label="Available Beans" value={availableBeans} />
+        {showCosts && stats?.total_spent != null ? (
+          <StatCard
+            label="Total Spent"
+            value={formatCost(stats.total_spent, currency)}
+          />
+        ) : (
+          <StatCard label="Available Beans" value={availableBeans} />
+        )}
       </div>
 
       {/* Quick actions */}
