@@ -177,25 +177,27 @@ class BeanOut(BaseModel):
 
 # ─────────────────────────────── Grinders ────────────────────────────────────
 
-class GrinderSettingsProfileCreate(BaseModel):
-    name: str
+class GrinderProfileCreate(BaseModel):
+    """
+    Create a best-setting recipe. Both bean_id and method_id are optional;
+    a profile can be fully specific, partially specific, or general.
+    """
+    bean_id: Optional[int] = None
+    method_id: Optional[int] = None
     setting: str
-    description: Optional[str] = None
+    notes: Optional[str] = None
 
 
-class GrinderSettingsProfileUpdate(BaseModel):
-    name: Optional[str] = None
-    setting: Optional[str] = None
-    description: Optional[str] = None
-
-
-class GrinderSettingsProfileOut(BaseModel):
+class GrinderProfileOut(BaseModel):
     id: int
     grinder_id: int
-    name: str
+    bean_id: Optional[int]
+    method_id: Optional[int]
     setting: str
-    description: Optional[str]
+    notes: Optional[str]
     created_at: datetime
+    bean: Optional["BeanOut"] = None
+    method: Optional["BrewMethodOut"] = None
 
     model_config = {"from_attributes": True}
 
@@ -221,7 +223,7 @@ class GrinderOut(BaseModel):
     manufacturer: Optional[str]
     notes: Optional[str]
     created_at: datetime
-    settings_profiles: list[GrinderSettingsProfileOut] = []
+    profiles: list[GrinderProfileOut] = []
 
     model_config = {"from_attributes": True}
 

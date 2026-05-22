@@ -73,13 +73,23 @@ export type BeanUpdate = Partial<BeanCreate>;
 
 // ─────────────────────────── Grinders ────────────────────────────────────────
 
-export interface GrinderSettingsProfile {
+export interface GrinderProfile {
   id: number;
   grinder_id: number;
-  name: string;
+  bean_id: number | null;
+  method_id: number | null;
   setting: string;
-  description: string | null;
+  notes: string | null;
   created_at: string;
+  bean: Bean | null;
+  method: BrewMethod | null;
+}
+
+export interface GrinderProfileCreate {
+  bean_id?: number;
+  method_id?: number;
+  setting: string;
+  notes?: string;
 }
 
 export interface Grinder {
@@ -89,7 +99,7 @@ export interface Grinder {
   manufacturer: string | null;
   notes: string | null;
   created_at: string;
-  settings_profiles: GrinderSettingsProfile[];
+  profiles: GrinderProfile[];
 }
 
 export interface GrinderCreate {

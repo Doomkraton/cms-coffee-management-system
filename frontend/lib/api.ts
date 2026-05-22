@@ -4,7 +4,7 @@ import type {
   InstanceStatus,
   Bean, BeanCreate, BeanUpdate,
   Grinder, GrinderCreate, GrinderUpdate,
-  GrinderSettingsProfile,
+  GrinderProfile, GrinderProfileCreate,
   BrewMethod, BrewMethodCreate, BrewMethodUpdate,
   BrewLog, BrewLogCreate, BrewLogUpdate,
   InviteCode,
@@ -108,10 +108,19 @@ export const grindersApi = {
   update: (id: number, data: GrinderUpdate) =>
     client.patch<Grinder>(`/api/grinders/${id}`, data).then((r) => r.data),
   delete: (id: number) => client.delete(`/api/grinders/${id}`),
-  createProfile: (grinderId: number, data: { name: string; setting: string; description?: string }) =>
-    client.post<GrinderSettingsProfile>(`/api/grinders/${grinderId}/profiles`, data).then((r) => r.data),
+  createProfile: (grinderId: number, data: GrinderProfileCreate) =>
+    client.post<GrinderProfile>(`/api/grinders/${grinderId}/profiles`, data).then((r) => r.data),
   deleteProfile: (grinderId: number, profileId: number) =>
     client.delete(`/api/grinders/${grinderId}/profiles/${profileId}`),
+  suggestProfile: async (grinderId: number, beanId?: number, methodId?: number) => {
+    const params = new URLSearchParams();
+    if (beanId) params.set("bean_id", String(beanId));
+    if (methodId) params.set("method_id", String(methodId));
+    const r = await client.get<GrinderProfile | null>(
+      `/api/grinders/${grinderId}/profiles/suggest?${params}`
+    );
+    return r.data;
+  },
 };
 
 // ─────────────────────────────── Brew Methods ────────────────────────────────

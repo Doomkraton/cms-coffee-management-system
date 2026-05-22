@@ -203,39 +203,68 @@ def delete_grinder(db: Session, grinder: models.Grinder) -> None:
     db.commit()
 
 
-# ─────────────────────── Grinder Settings Profiles ───────────────────────────
+# ─────────────────────────── Grinder Profiles ───────────────────────────────
 
 def create_grinder_profile(
-    db: Session, grinder_id: int, data: schemas.GrinderSettingsProfileCreate
-) -> models.GrinderSettingsProfile:
-    profile = models.GrinderSettingsProfile(grinder_id=grinder_id, **data.model_dump())
+    db: Session, grinder_id: int, data: schemas.GrinderProfileCreate
+) -> models.GrinderProfile:
+    profile = models.GrinderProfile(grinder_id=grinder_id, **data.model_dump())
     db.add(profile)
     db.commit()
     db.refresh(profile)
     return profile
 
 
-def get_grinder_profile(db: Session, profile_id: int) -> Optional[models.GrinderSettingsProfile]:
-    return db.query(models.GrinderSettingsProfile).filter(
-        models.GrinderSettingsProfile.id == profile_id
+def get_grinder_profile(db: Session, profile_id: int) -> Optional[models.GrinderProfile]:
+    return db.query(models.GrinderProfile).filter(
+        models.GrinderProfile.id == profile_id
     ).first()
 
 
-def update_grinder_profile(
-    db: Session,
-    profile: models.GrinderSettingsProfile,
-    data: schemas.GrinderSettingsProfileUpdate,
-) -> models.GrinderSettingsProfile:
-    for field, value in data.model_dump(exclude_unset=True).items():
-        setattr(profile, field, value)
-    db.commit()
-    db.refresh(profile)
-    return profile
-
-
-def delete_grinder_profile(db: Session, profile: models.GrinderSettingsProfile) -> None:
+def delete_grinder_profile(db: Session, profile: models.GrinderProfile) -> None:
     db.delete(profile)
     db.commit()
+
+
+def suggest_grinder_profile(
+    db: Session,
+    grinder_id: int,
+    bean_id: Optional[int],
+    method_id: Optional[int],
+) -> Optional[models.GrinderProfile]:
+    """
+    Return the best-matching profile for a given grinder + bean + method,
+    ranked by specificity:
+      4 — exact match (bean + method)
+      3 — bean match only
+      2 — method match only
+      1 — general (no bean, no method)
+      0 — no match
+    """
+    profiles = (
+        db.query(models.GrinderProfile)
+        .filter(models.GrinderProfile.grinder_id == grinder_id)
+        .all()
+    )
+    if not profiles:
+        return None
+
+    def score(p: models.GrinderProfile) -> int:
+        bean_match = p.bean_id == bean_id if bean_id else p.bean_id is None
+        method_match = p.method_id == method_id if method_id else p.method_id is None
+
+        if p.bean_id == bean_id and p.method_id == method_id:
+            return 4  # exact
+        if p.bean_id == bean_id and p.method_id is None:
+            return 3  # bean-specific, any method
+        if p.method_id == method_id and p.bean_id is None:
+            return 2  # method-specific, any bean
+        if p.bean_id is None and p.method_id is None:
+            return 1  # general fallback
+        return 0  # for a different bean/method combination
+
+    best = max(profiles, key=score)
+    return best if score(best) > 0 else None
 
 
 # ─────────────────────────────── Brew Methods ────────────────────────────────
@@ -287,13 +316,29 @@ def get_brew_log(db: Session, log_id: int) -> Optional[models.BrewLog]:
     return db.query(models.BrewLog).filter(models.BrewLog.id == log_id).first()
 
 
+def _adjust_bean_stock(db: Session, bean_id: int, delta_grams: float) -> None:
+    """Add delta_grams to bean.quantity_grams (negative to subtract)."""
+    bean = db.query(models.Bean).filter(models.Bean.id == bean_id).first()
+    if not bean:
+        return
+    bean.quantity_grams = max(0.0, bean.quantity_grams + delta_grams)
+    if bean.quantity_grams == 0.0:
+        bean.is_available = False
+    db.commit()
+
+
 def create_brew_log(
     db: Session, user_id: int, data: schemas.BrewLogCreate
 ) -> models.BrewLog:
-    log_data = data.model_dump()
-    log = models.BrewLog(user_id=user_id, **log_data)
+    log = models.BrewLog(user_id=user_id, **data.model_dump())
     db.add(log)
     db.commit()
+    db.refresh(log)
+
+    # Subtract used coffee from bean stock
+    if log.coffee_amount:
+        _adjust_bean_stock(db, log.bean_id, -log.coffee_amount)
+
     db.refresh(log)
     return log
 
@@ -301,14 +346,38 @@ def create_brew_log(
 def update_brew_log(
     db: Session, log: models.BrewLog, data: schemas.BrewLogUpdate
 ) -> models.BrewLog:
+    old_coffee = log.coffee_amount
+    old_bean_id = log.bean_id
+
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(log, field, value)
     db.commit()
+    db.refresh(log)
+
+    # Adjust stock if coffee_amount or bean changed
+    new_coffee = log.coffee_amount
+    new_bean_id = log.bean_id
+
+    if old_bean_id == new_bean_id:
+        # Same bean — adjust the difference
+        diff = (old_coffee or 0.0) - (new_coffee or 0.0)
+        if diff != 0:
+            _adjust_bean_stock(db, new_bean_id, diff)
+    else:
+        # Bean changed — return stock to old bean, deduct from new bean
+        if old_coffee:
+            _adjust_bean_stock(db, old_bean_id, old_coffee)
+        if new_coffee:
+            _adjust_bean_stock(db, new_bean_id, -new_coffee)
+
     db.refresh(log)
     return log
 
 
 def delete_brew_log(db: Session, log: models.BrewLog) -> None:
+    # Return coffee to bean stock before deleting
+    if log.coffee_amount:
+        _adjust_bean_stock(db, log.bean_id, log.coffee_amount)
     db.delete(log)
     db.commit()
 
