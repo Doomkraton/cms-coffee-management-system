@@ -152,7 +152,13 @@ def get_bean(db: Session, bean_id: int) -> Optional[models.Bean]:
 
 
 def create_bean(db: Session, data: schemas.BeanCreate) -> models.Bean:
-    bean = models.Bean(**data.model_dump())
+    bean_data = data.model_dump()
+    # At purchase time, quantity_grams == the original package size.
+    # Capture it as quantity_purchased_grams so cost calculations have a
+    # stable basis that won't drift as stock is consumed by brews.
+    if bean_data.get("quantity_purchased_grams") is None:
+        bean_data["quantity_purchased_grams"] = bean_data.get("quantity_grams")
+    bean = models.Bean(**bean_data)
     db.add(bean)
     db.commit()
     db.refresh(bean)
