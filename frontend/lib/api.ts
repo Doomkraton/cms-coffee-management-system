@@ -10,6 +10,10 @@ import type {
   InviteCode,
   BrewStats,
   User,
+  UserWithBrewCount,
+  UserUpdate,
+  OwnPasswordChange,
+  AdminPasswordChange,
 } from "./types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -58,6 +62,28 @@ export const authApi = {
     client.get<InviteCode[]>("/api/auth/invite-codes").then((r) => r.data),
   revokeInviteCode: (id: number) =>
     client.delete(`/api/auth/invite-codes/${id}`),
+};
+
+// ─────────────────────────────── Users ───────────────────────────────────────
+
+export const usersApi = {
+  // Any authenticated user — own profile
+  getMe: () =>
+    client.get<User>("/api/users/me").then((r) => r.data),
+  updateMe: (data: UserUpdate) =>
+    client.patch<User>("/api/users/me", data).then((r) => r.data),
+  changeMyPassword: (data: OwnPasswordChange) =>
+    client.patch<User>("/api/users/me/password", data).then((r) => r.data),
+
+  // Admin only
+  list: () =>
+    client.get<UserWithBrewCount[]>("/api/users/").then((r) => r.data),
+  update: (id: number, data: UserUpdate) =>
+    client.patch<User>(`/api/users/${id}`, data).then((r) => r.data),
+  setPassword: (id: number, data: AdminPasswordChange) =>
+    client.patch<User>(`/api/users/${id}/password`, data).then((r) => r.data),
+  delete: (id: number) =>
+    client.delete(`/api/users/${id}`),
 };
 
 // ─────────────────────────────── Beans ───────────────────────────────────────

@@ -53,6 +53,49 @@ class TokenResponse(BaseModel):
     user: UserOut
 
 
+class UserUpdate(BaseModel):
+    """Edit a user's name or email."""
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+
+
+class OwnPasswordChange(BaseModel):
+    """User changing their own password — must supply current password."""
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
+class AdminPasswordChange(BaseModel):
+    """Admin setting any user's password — no current password required."""
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
+class UserWithBrewCount(BaseModel):
+    """UserOut extended with brew_count for the members list."""
+    id: int
+    email: str
+    name: str
+    is_admin: bool
+    created_at: datetime
+    brew_count: int
+
+    model_config = {"from_attributes": True}
+
+
 # ─────────────────────────────── Invite Codes ────────────────────────────────
 
 class InviteCodeCreate(BaseModel):

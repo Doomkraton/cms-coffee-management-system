@@ -53,6 +53,55 @@ def create_user_from_join(
     return user
 
 
+def get_all_users(db: Session) -> list[models.User]:
+    return db.query(models.User).order_by(models.User.created_at).all()
+
+
+def update_user(db: Session, user: models.User, data: schemas.UserUpdate) -> models.User:
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def change_user_password(db: Session, user: models.User, new_password: str) -> models.User:
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def get_user_brew_count(db: Session, user_id: int) -> int:
+    return db.query(models.BrewLog).filter(models.BrewLog.user_id == user_id).count()
+
+
+def delete_user(db: Session, user: models.User) -> None:
+    """
+    Delete a user and everything they own:
+      - Their brew logs
+      - Invite codes they created
+    Invite codes they *used* are kept (used_by set to null manually).
+    """
+    # Nullify used_by on invite codes they redeemed
+    db.query(models.InviteCode).filter(
+        models.InviteCode.used_by == user.id
+    ).update({"used_by": None})
+
+    # Delete invite codes they created
+    db.query(models.InviteCode).filter(
+        models.InviteCode.created_by == user.id
+    ).delete()
+
+    # Delete their brew logs
+    db.query(models.BrewLog).filter(
+        models.BrewLog.user_id == user.id
+    ).delete()
+
+    db.delete(user)
+    db.commit()
+
+
 # ─────────────────────────────── Invite Codes ────────────────────────────────
 
 def create_invite_code(

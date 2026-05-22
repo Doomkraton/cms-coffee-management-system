@@ -8,6 +8,24 @@ export interface User {
   created_at: string;
 }
 
+export interface UserWithBrewCount extends User {
+  brew_count: number;
+}
+
+export interface UserUpdate {
+  name?: string;
+  email?: string;
+}
+
+export interface OwnPasswordChange {
+  current_password: string;
+  new_password: string;
+}
+
+export interface AdminPasswordChange {
+  new_password: string;
+}
+
 export interface TokenResponse {
   access_token: string;
   token_type: string;
