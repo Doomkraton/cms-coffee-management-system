@@ -41,7 +41,7 @@ export default function BeanDetailPage() {
     setForm((prev) => ({ ...prev, [k]: v }));
   }
 
-  async function handleSave(e: React.FormEvent) {
+  async function handleSave(e: React.SubmitEvent) {
     e.preventDefault();
     setError("");
     setSuccess(false);

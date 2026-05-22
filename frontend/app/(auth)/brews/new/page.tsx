@@ -45,7 +45,7 @@ export default function NewBrewPage() {
     setForm((prev) => ({ ...prev, [k]: v }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault();
     if (!form.bean_id || !form.method_id) {
       setError("Please select a bean and a brew method");
@@ -54,11 +54,11 @@ export default function NewBrewPage() {
     setError("");
     setSaving(true);
     try {
-      const log = await brewsApi.create({
+      const newLog = await brewsApi.create({
         ...form,
         grinder_id: form.grinder_id || undefined,
       });
-      router.push(`/brews`);
+      router.push(`/brews/${newLog.id}`);
     } catch (err) {
       setError(getErrorMessage(err));
       setSaving(false);
