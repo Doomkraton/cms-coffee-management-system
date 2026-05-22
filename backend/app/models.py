@@ -48,6 +48,7 @@ class Bean(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     brew_logs = relationship("BrewLog", back_populates="bean")
+    grinder_profiles = relationship("GrinderProfile", back_populates="bean")
 
 
 class Grinder(Base):
@@ -60,21 +61,29 @@ class Grinder(Base):
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
-    settings_profiles = relationship("GrinderSettingsProfile", back_populates="grinder", cascade="all, delete-orphan")
+    profiles = relationship("GrinderProfile", back_populates="grinder", cascade="all, delete-orphan")
     brew_logs = relationship("BrewLog", back_populates="grinder")
 
 
-class GrinderSettingsProfile(Base):
-    __tablename__ = "grinder_settings_profiles"
+class GrinderProfile(Base):
+    """
+    Best-setting recipe for a specific grinder + bean + method combination.
+    bean_id and method_id are both optional — a profile can be general
+    (no bean/method), bean-specific, method-specific, or fully specific.
+    """
+    __tablename__ = "grinder_profiles"
 
     id = Column(Integer, primary_key=True, index=True)
     grinder_id = Column(Integer, ForeignKey("grinders.id"), nullable=False)
-    name = Column(String, nullable=False)
-    setting = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
+    bean_id = Column(Integer, ForeignKey("beans.id"), nullable=True)
+    method_id = Column(Integer, ForeignKey("brew_methods.id"), nullable=True)
+    setting = Column(String, nullable=False)          # dial position, click count, etc.
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
-    grinder = relationship("Grinder", back_populates="settings_profiles")
+    grinder = relationship("Grinder", back_populates="profiles")
+    bean = relationship("Bean", back_populates="grinder_profiles")
+    method = relationship("BrewMethod", back_populates="grinder_profiles")
 
 
 class BrewMethod(Base):
@@ -87,6 +96,7 @@ class BrewMethod(Base):
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     brew_logs = relationship("BrewLog", back_populates="method")
+    grinder_profiles = relationship("GrinderProfile", back_populates="method")
 
 
 class BrewLog(Base):
