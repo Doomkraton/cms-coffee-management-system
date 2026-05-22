@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base, settings
-from app.routers import auth, beans, grinders, methods, brews
+from app.routers import auth, beans, grinders, methods, brews, users, instance_settings
 
 # Create all tables on startup (idempotent — safe to run on existing DB)
 Base.metadata.create_all(bind=engine)
@@ -26,7 +26,9 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(auth.router,     prefix="/api/auth",     tags=["Auth"])
+app.include_router(auth.router,             prefix="/api/auth",             tags=["Auth"])
+app.include_router(users.router,            prefix="/api/users",            tags=["Users"])
+app.include_router(instance_settings.router, prefix="/api/instance-settings", tags=["Instance Settings"])
 app.include_router(beans.router,    prefix="/api/beans",    tags=["Beans"])
 app.include_router(grinders.router, prefix="/api/grinders", tags=["Grinders"])
 app.include_router(methods.router,  prefix="/api/methods",  tags=["Brew Methods"])

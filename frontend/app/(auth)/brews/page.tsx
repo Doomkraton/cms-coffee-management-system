@@ -6,9 +6,12 @@ import { brewsApi, getErrorMessage } from "@/lib/api";
 import type { BrewLog } from "@/lib/types";
 import StarRating from "@/components/StarRating";
 import { useAuthStore } from "@/lib/store";
+import { useSettingsStore } from "@/lib/settingsStore";
+import { formatCost, calcBrewCost } from "@/lib/currencies";
 
 export default function BrewsPage() {
   const { user } = useAuthStore();
+  const { showCosts, currency } = useSettingsStore();
   const [brews, setBrews] = useState<BrewLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -100,6 +103,16 @@ export default function BrewsPage() {
                   {brew.water_temperature && <Param label="Temp" value={`${brew.water_temperature}°C`} />}
                   {brew.brew_time && <Param label="Time" value={formatTime(brew.brew_time)} />}
                   {brew.grinder && <Param label="Grinder" value={brew.grinder.name} />}
+                  {showCosts && (() => {
+                    const cost = calcBrewCost(
+                      brew.coffee_amount,
+                      brew.bean.purchase_cost,
+                      brew.bean.quantity_purchased_grams,
+                    );
+                    return cost != null
+                      ? <Param label="Cost" value={formatCost(cost, currency)} />
+                      : null;
+                  })()}
                   {brew.grinder_setting && <Param label="Setting" value={brew.grinder_setting} />}
                 </div>
 

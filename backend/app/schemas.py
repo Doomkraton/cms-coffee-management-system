@@ -53,6 +53,49 @@ class TokenResponse(BaseModel):
     user: UserOut
 
 
+class UserUpdate(BaseModel):
+    """Edit a user's name or email."""
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+
+
+class OwnPasswordChange(BaseModel):
+    """User changing their own password — must supply current password."""
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
+class AdminPasswordChange(BaseModel):
+    """Admin setting any user's password — no current password required."""
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
+class UserWithBrewCount(BaseModel):
+    """UserOut extended with brew_count for the members list."""
+    id: int
+    email: str
+    name: str
+    is_admin: bool
+    created_at: datetime
+    brew_count: int
+
+    model_config = {"from_attributes": True}
+
+
 # ─────────────────────────────── Invite Codes ────────────────────────────────
 
 class InviteCodeCreate(BaseModel):
@@ -134,25 +177,27 @@ class BeanOut(BaseModel):
 
 # ─────────────────────────────── Grinders ────────────────────────────────────
 
-class GrinderSettingsProfileCreate(BaseModel):
-    name: str
+class GrinderProfileCreate(BaseModel):
+    """
+    Create a best-setting recipe. Both bean_id and method_id are optional;
+    a profile can be fully specific, partially specific, or general.
+    """
+    bean_id: Optional[int] = None
+    method_id: Optional[int] = None
     setting: str
-    description: Optional[str] = None
+    notes: Optional[str] = None
 
 
-class GrinderSettingsProfileUpdate(BaseModel):
-    name: Optional[str] = None
-    setting: Optional[str] = None
-    description: Optional[str] = None
-
-
-class GrinderSettingsProfileOut(BaseModel):
+class GrinderProfileOut(BaseModel):
     id: int
     grinder_id: int
-    name: str
+    bean_id: Optional[int]
+    method_id: Optional[int]
     setting: str
-    description: Optional[str]
+    notes: Optional[str]
     created_at: datetime
+    bean: Optional["BeanOut"] = None
+    method: Optional["BrewMethodOut"] = None
 
     model_config = {"from_attributes": True}
 
@@ -178,7 +223,7 @@ class GrinderOut(BaseModel):
     manufacturer: Optional[str]
     notes: Optional[str]
     created_at: datetime
-    settings_profiles: list[GrinderSettingsProfileOut] = []
+    profiles: list[GrinderProfileOut] = []
 
     model_config = {"from_attributes": True}
 
@@ -275,3 +320,17 @@ class BrewLogOut(BaseModel):
 class InstanceStatus(BaseModel):
     has_users: bool
     registration_open: bool
+
+
+# ─────────────────────────────── Instance Settings ───────────────────────────
+
+class InstanceSettingsOut(BaseModel):
+    show_costs: bool
+    currency: str
+
+    model_config = {"from_attributes": True}
+
+
+class InstanceSettingsUpdate(BaseModel):
+    show_costs: Optional[bool] = None
+    currency: Optional[str] = None

@@ -4,12 +4,18 @@ import type {
   InstanceStatus,
   Bean, BeanCreate, BeanUpdate,
   Grinder, GrinderCreate, GrinderUpdate,
-  GrinderSettingsProfile,
+  GrinderProfile, GrinderProfileCreate,
   BrewMethod, BrewMethodCreate, BrewMethodUpdate,
   BrewLog, BrewLogCreate, BrewLogUpdate,
   InviteCode,
   BrewStats,
   User,
+  UserWithBrewCount,
+  UserUpdate,
+  OwnPasswordChange,
+  AdminPasswordChange,
+  InstanceSettings,
+  InstanceSettingsUpdate,
 } from "./types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -60,6 +66,28 @@ export const authApi = {
     client.delete(`/api/auth/invite-codes/${id}`),
 };
 
+// ─────────────────────────────── Users ───────────────────────────────────────
+
+export const usersApi = {
+  // Any authenticated user — own profile
+  getMe: () =>
+    client.get<User>("/api/users/me").then((r) => r.data),
+  updateMe: (data: UserUpdate) =>
+    client.patch<User>("/api/users/me", data).then((r) => r.data),
+  changeMyPassword: (data: OwnPasswordChange) =>
+    client.patch<User>("/api/users/me/password", data).then((r) => r.data),
+
+  // Admin only
+  list: () =>
+    client.get<UserWithBrewCount[]>("/api/users/").then((r) => r.data),
+  update: (id: number, data: UserUpdate) =>
+    client.patch<User>(`/api/users/${id}`, data).then((r) => r.data),
+  setPassword: (id: number, data: AdminPasswordChange) =>
+    client.patch<User>(`/api/users/${id}/password`, data).then((r) => r.data),
+  delete: (id: number) =>
+    client.delete(`/api/users/${id}`),
+};
+
 // ─────────────────────────────── Beans ───────────────────────────────────────
 
 export const beansApi = {
@@ -80,10 +108,19 @@ export const grindersApi = {
   update: (id: number, data: GrinderUpdate) =>
     client.patch<Grinder>(`/api/grinders/${id}`, data).then((r) => r.data),
   delete: (id: number) => client.delete(`/api/grinders/${id}`),
-  createProfile: (grinderId: number, data: { name: string; setting: string; description?: string }) =>
-    client.post<GrinderSettingsProfile>(`/api/grinders/${grinderId}/profiles`, data).then((r) => r.data),
+  createProfile: (grinderId: number, data: GrinderProfileCreate) =>
+    client.post<GrinderProfile>(`/api/grinders/${grinderId}/profiles`, data).then((r) => r.data),
   deleteProfile: (grinderId: number, profileId: number) =>
     client.delete(`/api/grinders/${grinderId}/profiles/${profileId}`),
+  suggestProfile: async (grinderId: number, beanId?: number, methodId?: number) => {
+    const params = new URLSearchParams();
+    if (beanId) params.set("bean_id", String(beanId));
+    if (methodId) params.set("method_id", String(methodId));
+    const r = await client.get<GrinderProfile | null>(
+      `/api/grinders/${grinderId}/profiles/suggest?${params}`
+    );
+    return r.data;
+  },
 };
 
 // ─────────────────────────────── Brew Methods ────────────────────────────────
@@ -108,6 +145,15 @@ export const brewsApi = {
     client.patch<BrewLog>(`/api/brews/${id}`, data).then((r) => r.data),
   delete: (id: number) => client.delete(`/api/brews/${id}`),
   stats: () => client.get<BrewStats>("/api/brews/stats").then((r) => r.data),
+};
+
+// ─────────────────────────────── Instance Settings ───────────────────────────
+
+export const instanceSettingsApi = {
+  get: () =>
+    client.get<InstanceSettings>("/api/instance-settings/").then((r) => r.data),
+  update: (data: InstanceSettingsUpdate) =>
+    client.patch<InstanceSettings>("/api/instance-settings/", data).then((r) => r.data),
 };
 
 // Helper: extract error message from Axios error

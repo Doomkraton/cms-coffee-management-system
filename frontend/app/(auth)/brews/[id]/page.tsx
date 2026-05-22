@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { brewsApi, getErrorMessage } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
+import { useSettingsStore } from "@/lib/settingsStore";
+import { formatCost, calcBrewCost } from "@/lib/currencies";
 import type { BrewLog } from "@/lib/types";
 import StarRating from "@/components/StarRating";
 
@@ -12,6 +14,7 @@ export default function BrewDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
+  const { showCosts, currency } = useSettingsStore();
   const [brew, setBrew] = useState<BrewLog | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -101,6 +104,19 @@ export default function BrewDetailPage() {
             <Stat label="Water" value={brew.water_amount ? `${brew.water_amount}g` : null} />
             <Stat label="Temperature" value={brew.water_temperature ? `${brew.water_temperature}°C` : null} />
             <Stat label="Brew Time" value={brew.brew_time ? formatTime(brew.brew_time) : null} />
+            {showCosts && (
+              <Stat
+                label="Cost"
+                value={(() => {
+                  const cost = calcBrewCost(
+                    brew.coffee_amount,
+                    brew.bean.purchase_cost,
+                    brew.bean.quantity_purchased_grams,
+                  );
+                  return cost != null ? formatCost(cost, currency) : null;
+                })()}
+              />
+            )}
           </div>
         </div>
 

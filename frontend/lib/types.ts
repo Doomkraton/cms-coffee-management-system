@@ -8,6 +8,24 @@ export interface User {
   created_at: string;
 }
 
+export interface UserWithBrewCount extends User {
+  brew_count: number;
+}
+
+export interface UserUpdate {
+  name?: string;
+  email?: string;
+}
+
+export interface OwnPasswordChange {
+  current_password: string;
+  new_password: string;
+}
+
+export interface AdminPasswordChange {
+  new_password: string;
+}
+
 export interface TokenResponse {
   access_token: string;
   token_type: string;
@@ -55,13 +73,23 @@ export type BeanUpdate = Partial<BeanCreate>;
 
 // ─────────────────────────── Grinders ────────────────────────────────────────
 
-export interface GrinderSettingsProfile {
+export interface GrinderProfile {
   id: number;
   grinder_id: number;
-  name: string;
+  bean_id: number | null;
+  method_id: number | null;
   setting: string;
-  description: string | null;
+  notes: string | null;
   created_at: string;
+  bean: Bean | null;
+  method: BrewMethod | null;
+}
+
+export interface GrinderProfileCreate {
+  bean_id?: number;
+  method_id?: number;
+  setting: string;
+  notes?: string;
 }
 
 export interface Grinder {
@@ -71,7 +99,7 @@ export interface Grinder {
   manufacturer: string | null;
   notes: string | null;
   created_at: string;
-  settings_profiles: GrinderSettingsProfile[];
+  profiles: GrinderProfile[];
 }
 
 export interface GrinderCreate {
@@ -161,4 +189,19 @@ export interface BrewStats {
   total_coffee_grams: number;
   top_bean: string | null;
   top_method: string | null;
+  total_spent: number | null;
+  avg_cost_per_brew: number | null;
+  costed_brews: number;
+}
+
+// ─────────────────────────── Instance Settings ───────────────────────────────
+
+export interface InstanceSettings {
+  show_costs: boolean;
+  currency: string;
+}
+
+export interface InstanceSettingsUpdate {
+  show_costs?: boolean;
+  currency?: string;
 }
