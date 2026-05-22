@@ -341,10 +341,79 @@ def get_brew_stats(db: Session) -> dict:
         .first()
     )
 
+    # Total spent — sum(coffee_amount * purchase_cost / cost_basis_grams)
+    # cost_basis = quantity_purchased_grams if set, else quantity_grams (initial stock)
+    cost_basis = func.coalesce(
+        models.Bean.quantity_purchased_grams,
+        models.Bean.quantity_grams,
+    )
+    total_spent_raw = (
+        db.query(
+            func.sum(
+                models.BrewLog.coffee_amount
+                * models.Bean.purchase_cost
+                / func.nullif(cost_basis, 0)
+            )
+        )
+        .join(models.Bean, models.BrewLog.bean_id == models.Bean.id)
+        .filter(
+            models.BrewLog.coffee_amount.isnot(None),
+            models.Bean.purchase_cost.isnot(None),
+        )
+        .scalar()
+    )
+
+    # Brews with calculable cost (for avg cost per brew)
+    costed_brews = (
+        db.query(func.count(models.BrewLog.id))
+        .join(models.Bean, models.BrewLog.bean_id == models.Bean.id)
+        .filter(
+            models.BrewLog.coffee_amount.isnot(None),
+            models.Bean.purchase_cost.isnot(None),
+        )
+        .scalar()
+        or 0
+    )
+
+    total_spent = round(float(total_spent_raw), 2) if total_spent_raw else None
+    avg_cost = (
+        round(total_spent / costed_brews, 2)
+        if total_spent and costed_brews > 0
+        else None
+    )
+
     return {
         "total_brews": total_brews,
         "avg_rating": round(float(avg_rating), 2) if avg_rating else None,
         "total_coffee_grams": round(float(total_coffee_g), 1),
         "top_bean": top_bean.name if top_bean else None,
         "top_method": top_method.name if top_method else None,
+        "total_spent": total_spent,
+        "avg_cost_per_brew": avg_cost,
+        "costed_brews": costed_brews,
     }
+
+
+# ─────────────────────────────── Instance Settings ───────────────────────────
+
+def get_instance_settings(db: Session) -> models.InstanceSettings:
+    """Get the singleton settings row, creating it with defaults if missing."""
+    settings = db.query(models.InstanceSettings).first()
+    if not settings:
+        settings = models.InstanceSettings()
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+
+def update_instance_settings(
+    db: Session,
+    data: "schemas.InstanceSettingsUpdate",
+) -> models.InstanceSettings:
+    settings = get_instance_settings(db)
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(settings, field, value)
+    db.commit()
+    db.refresh(settings)
+    return settings

@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { brewsApi, beansApi } from "@/lib/api";
+import { useSettingsStore } from "@/lib/settingsStore";
+import { formatCost } from "@/lib/currencies";
 import type { BrewStats, Bean } from "@/lib/types";
 
 export default function AnalyticsPage() {
+  const { showCosts, currency } = useSettingsStore();
   const [stats, setStats] = useState<BrewStats | null>(null);
   const [beans, setBeans] = useState<Bean[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +29,13 @@ export default function AnalyticsPage() {
     ratedBeans.length > 0
       ? ratedBeans.reduce((sum, b) => sum + (b.rating ?? 0), 0) / ratedBeans.length
       : null;
+
+  // Cost per gram for each available bean (for the inventory table)
+  function beanCostPerGram(bean: Bean): number | null {
+    const basis = bean.quantity_purchased_grams ?? bean.quantity_grams;
+    if (!bean.purchase_cost || !basis || basis <= 0) return null;
+    return bean.purchase_cost / basis;
+  }
 
   return (
     <div className="space-y-6">
@@ -54,6 +64,35 @@ export default function AnalyticsPage() {
           />
         </div>
       </section>
+
+      {/* Cost stats — shown only when enabled */}
+      {showCosts && (
+        <section>
+          <h2 className="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-3">Cost Tracking</h2>
+          {stats?.total_spent != null ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <StatCard
+                label="Total Spent"
+                value={formatCost(stats.total_spent, currency)}
+              />
+              <StatCard
+                label="Avg Cost / Brew"
+                value={stats.avg_cost_per_brew != null
+                  ? formatCost(stats.avg_cost_per_brew, currency)
+                  : "—"}
+              />
+              <StatCard
+                label="Brews with Cost Data"
+                value={`${stats.costed_brews} / ${stats.total_brews}`}
+              />
+            </div>
+          ) : (
+            <p className="text-sm text-stone-400 bg-stone-50 dark:bg-stone-800/50 rounded-xl px-4 py-3">
+              No cost data yet. Add <span className="font-medium">purchase price</span> to your beans to track spending.
+            </p>
+          )}
+        </section>
+      )}
 
       {/* Favourites */}
       {(stats?.top_bean || stats?.top_method) && (
@@ -89,7 +128,6 @@ export default function AnalyticsPage() {
           />
         </div>
 
-        {/* Bean inventory table */}
         {availableBeans.length > 0 && (
           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
@@ -98,24 +136,43 @@ export default function AnalyticsPage() {
                   <th className="text-left px-4 py-2 text-stone-500 font-medium">Bean</th>
                   <th className="text-left px-4 py-2 text-stone-500 font-medium hidden md:table-cell">Roaster</th>
                   <th className="text-right px-4 py-2 text-stone-500 font-medium">Remaining</th>
-                  <th className="text-right px-4 py-2 text-stone-500 font-medium hidden md:table-cell">Cost</th>
+                  {showCosts && (
+                    <>
+                      <th className="text-right px-4 py-2 text-stone-500 font-medium hidden md:table-cell">
+                        Paid
+                      </th>
+                      <th className="text-right px-4 py-2 text-stone-500 font-medium hidden md:table-cell">
+                        /gram
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
-                {availableBeans.map((bean) => (
-                  <tr key={bean.id} className="border-t border-stone-100 dark:border-stone-800">
-                    <td className="px-4 py-2 text-stone-800 dark:text-stone-200 font-medium">{bean.name}</td>
-                    <td className="px-4 py-2 text-stone-500 hidden md:table-cell">{bean.roaster ?? "—"}</td>
-                    <td className="px-4 py-2 text-right">
-                      <span className={`font-medium ${bean.quantity_grams < 50 ? "text-red-600" : "text-stone-800 dark:text-stone-200"}`}>
-                        {bean.quantity_grams}g
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-right text-stone-500 hidden md:table-cell">
-                      {bean.purchase_cost ? `$${bean.purchase_cost.toFixed(2)}` : "—"}
-                    </td>
-                  </tr>
-                ))}
+                {availableBeans.map((bean) => {
+                  const cpg = beanCostPerGram(bean);
+                  return (
+                    <tr key={bean.id} className="border-t border-stone-100 dark:border-stone-800">
+                      <td className="px-4 py-2 text-stone-800 dark:text-stone-200 font-medium">{bean.name}</td>
+                      <td className="px-4 py-2 text-stone-500 hidden md:table-cell">{bean.roaster ?? "—"}</td>
+                      <td className="px-4 py-2 text-right">
+                        <span className={`font-medium ${bean.quantity_grams < 50 ? "text-red-600" : "text-stone-800 dark:text-stone-200"}`}>
+                          {bean.quantity_grams}g
+                        </span>
+                      </td>
+                      {showCosts && (
+                        <>
+                          <td className="px-4 py-2 text-right text-stone-500 hidden md:table-cell">
+                            {bean.purchase_cost ? formatCost(bean.purchase_cost, currency) : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right text-stone-400 hidden md:table-cell text-xs">
+                            {cpg ? formatCost(cpg, currency) : "—"}
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { authApi, usersApi, getErrorMessage } from "@/lib/api";
+import { authApi, usersApi, instanceSettingsApi, getErrorMessage } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
+import { useSettingsStore } from "@/lib/settingsStore";
+import { CURRENCIES } from "@/lib/currencies";
 import type { InviteCode, User, UserWithBrewCount } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
-type Tab = "profile" | "members" | "invites";
+type Tab = "profile" | "members" | "invites" | "instance";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -43,6 +45,9 @@ export default function SettingsPage() {
             <TabButton active={tab === "invites"} onClick={() => setTab("invites")}>
               Invite Codes
             </TabButton>
+            <TabButton active={tab === "instance"} onClick={() => setTab("instance")}>
+              Instance
+            </TabButton>
           </>
         )}
       </div>
@@ -55,6 +60,7 @@ export default function SettingsPage() {
       )}
       {tab === "members" && user?.is_admin && <MembersTab currentUserId={user.id} />}
       {tab === "invites" && user?.is_admin && <InviteCodesTab />}
+      {tab === "instance" && user?.is_admin && <InstanceTab />}
     </div>
   );
 }
@@ -591,6 +597,100 @@ function InviteCodesTab() {
           No invite codes yet.
         </p>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────── Instance Tab ────────────────────────────────
+
+function InstanceTab() {
+  const { showCosts, currency, setShowCosts, setCurrency } = useSettingsStore();
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave(e: React.SubmitEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+    try {
+      await instanceSettingsApi.update({ show_costs: showCosts, currency });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2500);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <form
+        onSubmit={handleSave}
+        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-5 space-y-5"
+      >
+        <div>
+          <h2 className="font-semibold text-stone-800 dark:text-stone-100">Instance Preferences</h2>
+          <p className="text-sm text-stone-400 mt-0.5">
+            These settings apply to everyone in your household.
+          </p>
+        </div>
+
+        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {success && <p className="text-green-600 text-sm">Saved ✓</p>}
+
+        {/* Show costs toggle */}
+        <div className="flex items-start justify-between gap-4 py-1">
+          <div>
+            <p className="text-sm font-medium text-stone-700 dark:text-stone-300">Show cost tracking</p>
+            <p className="text-xs text-stone-400 mt-0.5">
+              Display cost-per-brew, total spent, and bean prices across the app.
+              Turn off if household members prefer not to see this.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showCosts}
+            onClick={() => setShowCosts(!showCosts)}
+            className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 ${
+              showCosts ? "bg-amber-700" : "bg-stone-300 dark:bg-stone-600"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                showCosts ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Currency picker */}
+        <div>
+          <label className={labelClass}>Currency</label>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            disabled={!showCosts}
+            className={`${inputClass} disabled:opacity-40`}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.symbol} — {c.name} ({c.code})
+              </option>
+            ))}
+          </select>
+          {!showCosts && (
+            <p className="text-xs text-stone-400 mt-1">Enable cost tracking to change currency.</p>
+          )}
+        </div>
+
+        <button type="submit" disabled={saving} className={btnPrimary}>
+          {saving ? "Saving…" : "Save Preferences"}
+        </button>
+      </form>
     </div>
   );
 }
