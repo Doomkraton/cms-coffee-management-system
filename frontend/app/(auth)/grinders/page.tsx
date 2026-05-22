@@ -21,7 +21,7 @@ export default function GrindersPage() {
     });
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.SubmitEvent) {
     e.preventDefault();
     setFormError("");
     setSaving(true);
@@ -145,7 +145,7 @@ function GrinderCard({
   const [profileName, setProfileName] = useState("");
   const [profileSetting, setProfileSetting] = useState("");
 
-  function submitProfile(e: React.FormEvent) {
+  function submitProfile(e: React.SubmitEvent) {
     e.preventDefault();
     if (!profileName || !profileSetting) return;
     onAddProfile(profileName, profileSetting);

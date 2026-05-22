@@ -15,20 +15,20 @@ export default function BrewsPage() {
   const [hasMore, setHasMore] = useState(true);
   const LIMIT = 20;
 
+  // Initial load — fetched directly in the effect, setState called in .then()
+  useEffect(() => {
+    brewsApi.list(0, LIMIT).then((data) => {
+      setBrews(data);
+      setHasMore(data.length === LIMIT);
+      setLoading(false);
+    });
+  }, []);
+
   async function loadBrews(skip = 0) {
     const data = await brewsApi.list(skip, LIMIT);
-    if (skip === 0) {
-      setBrews(data);
-    } else {
-      setBrews((prev) => [...prev, ...data]);
-    }
+    setBrews((prev) => [...prev, ...data]);
     setHasMore(data.length === LIMIT);
-    setLoading(false);
   }
-
-  useEffect(() => {
-    loadBrews(0);
-  }, []);
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this brew log?")) return;

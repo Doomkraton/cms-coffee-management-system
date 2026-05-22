@@ -1,0 +1,79 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Local development stack
+#
+# Usage:
+#   docker-compose -f docker-compose.dev.yml up --build
+#
+# Hot reload:
+#   • Backend  — uvicorn --reload watches ./backend/app/**
+#   • Frontend — Next.js dev server watches ./frontend/**
+#
+# Ports:
+#   • Frontend  http://localhost:3000
+#   • Backend   http://localhost:8000  (Swagger UI at /docs)
+#   • Postgres  localhost:5432         (connect with any DB tool)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ─── PostgreSQL ─────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: cms-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: coffee_user
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: coffee_db
+    ports:
+      - "5432:5432"          # exposed so you can connect via psql / TablePlus
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coffee_user -d coffee_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ─── FastAPI backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: cms-backend-dev
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app          # mount source → edits trigger --reload
+    environment:
+      DATABASE_URL: postgresql://coffee_user:devpassword@db:5432/coffee_db
+      JWT_SECRET: dev-only-secret-change-in-production
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRATION_DAYS: 7
+      CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+
+  # ─── Next.js frontend ────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: cms-frontend-dev
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app           # mount source → edits hot-reload instantly
+      - /app/node_modules         # keep image's node_modules, not the host's
+      - /app/.next                # keep Next.js build cache inside container
+    environment:
+      # NEXT_PUBLIC_ vars are read at dev-server startup, not build time
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_dev_data:

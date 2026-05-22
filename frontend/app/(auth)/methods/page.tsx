@@ -21,7 +21,7 @@ export default function MethodsPage() {
     });
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.SubmitEvent) {
     e.preventDefault();
     setFormError("");
     setSaving(true);

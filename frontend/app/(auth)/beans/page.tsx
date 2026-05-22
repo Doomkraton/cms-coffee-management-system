@@ -32,7 +32,7 @@ export default function BeansPage() {
     setForm((prev) => ({ ...prev, [k]: v }));
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.SubmitEvent) {
     e.preventDefault();
     setFormError("");
     setSaving(true);

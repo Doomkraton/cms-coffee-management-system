@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies into the image layer.
+# Source code is volume-mounted at runtime so changes hot-reload instantly.
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# node_modules lives in the image layer, NOT in the volume mount.
+# The anonymous volume declared in docker-compose.dev.yml prevents the host
+# directory (which may be missing node_modules) from shadowing this layer.
+
+CMD ["npm", "run", "dev"]
