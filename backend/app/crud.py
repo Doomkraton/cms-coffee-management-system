@@ -410,35 +410,36 @@ def get_brew_stats(db: Session) -> dict:
         .first()
     )
 
-    # Total spent — sum(coffee_amount * purchase_cost / cost_basis_grams)
-    # cost_basis = quantity_purchased_grams if set, else quantity_grams (initial stock)
-    cost_basis = func.coalesce(
-        models.Bean.quantity_purchased_grams,
-        models.Bean.quantity_grams,
-    )
+    # Total spent — only when quantity_purchased_grams is explicitly set.
+    # We must NOT fall back to quantity_grams because that field decreases
+    # with every brew, which would silently inflate cost-per-gram over time.
     total_spent_raw = (
         db.query(
             func.sum(
                 models.BrewLog.coffee_amount
                 * models.Bean.purchase_cost
-                / func.nullif(cost_basis, 0)
+                / func.nullif(models.Bean.quantity_purchased_grams, 0)
             )
         )
         .join(models.Bean, models.BrewLog.bean_id == models.Bean.id)
         .filter(
             models.BrewLog.coffee_amount.isnot(None),
             models.Bean.purchase_cost.isnot(None),
+            models.Bean.quantity_purchased_grams.isnot(None),
+            models.Bean.quantity_purchased_grams > 0,
         )
         .scalar()
     )
 
-    # Brews with calculable cost (for avg cost per brew)
+    # Brews with calculable cost — must match the same filters as total_spent
     costed_brews = (
         db.query(func.count(models.BrewLog.id))
         .join(models.Bean, models.BrewLog.bean_id == models.Bean.id)
         .filter(
             models.BrewLog.coffee_amount.isnot(None),
             models.Bean.purchase_cost.isnot(None),
+            models.Bean.quantity_purchased_grams.isnot(None),
+            models.Bean.quantity_purchased_grams > 0,
         )
         .scalar()
         or 0

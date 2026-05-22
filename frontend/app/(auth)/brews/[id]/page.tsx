@@ -112,7 +112,6 @@ export default function BrewDetailPage() {
                     brew.coffee_amount,
                     brew.bean.purchase_cost,
                     brew.bean.quantity_purchased_grams,
-                    brew.bean.quantity_grams,
                   );
                   return cost != null ? formatCost(cost, currency) : null;
                 })()}

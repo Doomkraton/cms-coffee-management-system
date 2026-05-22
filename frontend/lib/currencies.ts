@@ -41,17 +41,19 @@ export function formatCost(amount: number, currencyCode: string): string {
 }
 
 /**
- * Calculate cost per brew from brew log data.
- * Returns null if the bean is missing purchase_cost or a gram baseline.
+ * Calculate cost per brew.
+ * Requires both purchase_cost AND quantity_purchased_grams to be set.
+ * quantity_purchased_grams is the original package size — it never changes.
+ * We deliberately do NOT fall back to quantity_grams because that field
+ * decreases with every brew, which would silently inflate cost-per-gram.
  */
 export function calcBrewCost(
   coffeeAmountG: number | null | undefined,
   purchaseCost: number | null | undefined,
   quantityPurchasedG: number | null | undefined,
-  quantityG: number | null | undefined,
 ): number | null {
-  if (!coffeeAmountG || !purchaseCost) return null;
-  const basis = quantityPurchasedG ?? quantityG;
-  if (!basis || basis <= 0) return null;
-  return coffeeAmountG * (purchaseCost / basis);
+  if (!coffeeAmountG || !purchaseCost || !quantityPurchasedG || quantityPurchasedG <= 0) {
+    return null;
+  }
+  return coffeeAmountG * (purchaseCost / quantityPurchasedG);
 }

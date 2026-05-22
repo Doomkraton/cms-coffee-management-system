@@ -32,9 +32,10 @@ export default function AnalyticsPage() {
 
   // Cost per gram for each available bean (for the inventory table)
   function beanCostPerGram(bean: Bean): number | null {
-    const basis = bean.quantity_purchased_grams ?? bean.quantity_grams;
-    if (!bean.purchase_cost || !basis || basis <= 0) return null;
-    return bean.purchase_cost / basis;
+    if (!bean.purchase_cost || !bean.quantity_purchased_grams || bean.quantity_purchased_grams <= 0) {
+      return null;
+    }
+    return bean.purchase_cost / bean.quantity_purchased_grams;
   }
 
   return (
